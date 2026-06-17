@@ -3,9 +3,6 @@ import requests
 
 app = Flask(__name__)
 
-tasks = []
-task_id_counter = 1
-
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -48,7 +45,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
         .add-form input {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
@@ -59,7 +56,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             border-color: #0f3460;
         }
         .add-form button {
-            padding: 10px 20px;
+            padding: 12px 24px;
             background: #0f3460;
             color: white;
             border: none;
@@ -134,6 +131,65 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             color: #999;
             font-size: 12px;
         }
+        .loader {
+            display: none;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #0f3460;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        .loader.show {
+            display: block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .weather-card {
+            background: rgba(15, 52, 96, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .weather-card .city-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .weather-card .temperature {
+            font-size: 3em;
+            font-weight: bold;
+            color: #0f3460;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .weather-card .details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .weather-card .detail-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+        }
+        .weather-card .detail-item .label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .weather-card .detail-item .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a1a2e;
+        }
     </style>
 </head>
 <body>
@@ -143,6 +199,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <input type="text" id="city-input" placeholder="Entrez une ville">
             <button type="submit" id="search-btn">Rechercher</button>
         </form>
+        <div class="loader" id="loader"></div>
         <div id="weather-result"></div>
         <form class="add-form" id="addForm">
             <input type="text" id="taskInput" placeholder="Nouvelle tâche...">
@@ -163,12 +220,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             e.preventDefault();
             const city = document.getElementById('city-input').value.trim();
             const resultDiv = document.getElementById('weather-result');
+            const loader = document.getElementById('loader');
             
             if (!city) {
                 resultDiv.innerHTML = 'Entrez un nom de ville';
                 resultDiv.className = 'error show';
                 return;
             }
+            
+            loader.classList.add('show');
+            resultDiv.className = '';
+            resultDiv.innerHTML = '';
             
             try {
                 const response = await fetch('/api/weather', {
@@ -179,6 +241,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 
                 if (!response.ok) {
                     const error = await response.json();
+                    loader.classList.remove('show');
                     resultDiv.innerHTML = error.error || 'Ville non trouvée';
                     resultDiv.className = 'error show';
                     return;
@@ -195,9 +258,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     51: 'Bruine légère',
                     53: 'Bruine modérée',
                     55: 'Bruine dense',
+                    56: 'Bruine verglaçante légère',
+                    57: 'Bruine verglaçante dense',
                     61: 'Pluie légère',
                     63: 'Pluie modérée',
                     65: 'Pluie forte',
+                    66: 'Pluie verglaçante légère',
+                    67: 'Pluie verglaçante forte',
                     71: 'Neige légère',
                     73: 'Neige modérée',
                     75: 'Neige forte',
@@ -213,63 +280,36 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 };
                 const description = weatherCodeDescriptions[data.weathercode] || 'Non disponible';
                 
+                loader.classList.remove('show');
                 resultDiv.innerHTML = `
-                    <h3 style="margin-bottom:15px;color:#1a1a2e;">Météo à ${data.city}</h3>
-                    <div class="weather-info">
-                        <div>
-                            <div class="label">Température</div>
-                            <div class="value">${data.temperature}°C</div>
-                        </div>
-                        <div>
-                            <div class="label">Vent</div>
-                            <div class="value">${data.wind} km/h</div>
-                        </div>
-                        <div style="grid-column:1/3;">
-                            <div class="label">Description</div>
-                            <div class="value">${description}</div>
+                    <div class="weather-card">
+                        <div class="city-name">${data.city}</div>
+                        <div class="temperature">${data.temperature}°C</div>
+                        <div class="details">
+                            <div class="detail-item">
+                                <div class="label">Vent</div>
+                                <div class="value">${data.wind} km/h</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="label">Description</div>
+                                <div class="value">${description}</div>
+                            </div>
                         </div>
                     </div>
                 `;
                 resultDiv.className = 'success show';
             } catch (error) {
+                loader.classList.remove('show');
                 resultDiv.innerHTML = 'Erreur de connexion au serveur';
                 resultDiv.className = 'error show';
             }
         });
-
-        document.getElementById('addForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const input = document.getElementById('taskInput');
-            const text = input.value.trim();
-            if (!text) return;
-            
-            const response = await fetch('/api/tasks', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({text: text})
-            });
-            
-            if (response.ok) {
-                input.value = '';
-                location.reload();
-            }
-        });
-
-        document.querySelectorAll('.task-item input[type="checkbox"]').forEach(checkbox => {
-            checkbox.addEventListener('change', async function() {
-                const taskId = this.id.replace('task', '');
-                const done = this.checked;
-                
-                await fetch('/api/tasks/' + taskId, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({done: done})
-                });
-            });
-        });
     </script>
 </body>
 </html>"""
+
+tasks = []
+task_id_counter = 0
 
 @app.route("/")
 def index():
@@ -305,7 +345,7 @@ def get_weather():
     weather_response = requests.get(weather_url)
     
     if weather_response.status_code != 200:
-        return jsonify({"error": "Erreur lors de la récupération de la météo"}), 500
+        return jsonify({"error": "Erreur lors de la récupération des données météo"}), 500
     
     weather_data = weather_response.json()
     current = weather_data.get("current_weather", {})
@@ -327,9 +367,9 @@ def add_task():
     data = request.get_json()
     text = data.get("text", "").strip()
     if not text:
-        return jsonify({"error": "Le texte est requis"}), 400
-    task = {"id": task_id_counter, "text": text, "done": False}
+        return jsonify({"error": "Le champ text est requis"}), 400
     task_id_counter += 1
+    task = {"id": task_id_counter, "text": text, "done": False}
     tasks.append(task)
     return jsonify(task), 201
 
@@ -338,16 +378,18 @@ def update_task(task_id):
     data = request.get_json()
     for task in tasks:
         if task["id"] == task_id:
-            if "done" in data:
-                task["done"] = data["done"]
             if "text" in data:
                 task["text"] = data["text"]
+            if "done" in data:
+                task["done"] = data["done"]
             return jsonify(task)
     return jsonify({"error": "Tâche non trouvée"}), 404
 
-@app.route("/api/health", methods=["GET"])
-def health():
-    return jsonify({"status": "ok", "version": "1.0"})
+@app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
+def delete_task(task_id):
+    global tasks
+    tasks = [t for t in tasks if t["id"] != task_id]
+    return jsonify({"message": "Tâche supprimée"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80)
