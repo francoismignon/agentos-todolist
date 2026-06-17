@@ -7,6 +7,7 @@ HTML_TEMPLATE = """
 <html>
 <head>
     <title>Application</title>
+    <link rel="stylesheet" type="text/css" href="/static/style.css">
 </head>
 <body>
     <div id="app"></div>
