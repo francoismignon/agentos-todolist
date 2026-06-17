@@ -62,6 +62,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </head>
 <body>
     <div id="app">
+        <h1>Dashboard Météo</h1>
+        <form class="add-form" id="addForm">
+            <input type="text" id="city-input" placeholder="Entrez une ville">
+            <button type="submit" id="search-btn">Rechercher</button>
+        </form>
+        <div id="weather-result"></div>
         <form class="add-form" id="addForm">
             <input type="text" id="taskInput" placeholder="Nouvelle tâche...">
             <button type="submit">Ajouter</button>
@@ -75,24 +81,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             {% endfor %}
         </div>
     </div>
-    <script>
-        document.getElementById('addForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const input = document.getElementById('taskInput');
-            const text = input.value.trim();
-            if (text === '') return;
-            fetch('/api/tasks', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({text: text})
-            })
-            .then(response => response.json())
-            .then(data => {
-                input.value = '';
-                location.reload();
-            });
-        });
-    </script>
 </body>
 </html>"""
 
