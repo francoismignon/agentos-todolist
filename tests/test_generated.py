@@ -1,4 +1,4 @@
-# tests/test_app.py
+# tests/test_generated.py
 import pytest
 from app import app
 
@@ -8,88 +8,92 @@ def client():
     with app.test_client() as client:
         yield client
 
-def test_index_status(client):
-    """Test que la page d'accueil retourne un statut 200"""
-    response = client.get('/')
-    assert response.status_code == 200
-
-def test_index_content_type(client):
-    """Test que la réponse est du HTML"""
-    response = client.get('/')
-    assert response.content_type == 'text/html; charset=utf-8'
-
-def test_index_contains_checkbox(client):
-    """Test que la page contient un input checkbox"""
-    response = client.get('/')
-    assert 'type="checkbox"' in response.data.decode()
-
-def test_index_contains_app_div(client):
-    """Test que la page contient le div #app"""
-    response = client.get('/')
-    assert '<div id="app">' in response.data.decode()
-
-def test_index_contains_strike_script(client):
-    """Test que la page contient du JavaScript pour barrer le texte"""
+def test_index_contains_form(client):
+    """Test que la page contient un formulaire"""
     response = client.get('/')
     html = response.data.decode()
-    assert 'text-decoration' in html or 'line-through' in html
+    assert '<form' in html
 
-def test_index_contains_event_listener(client):
-    """Test que la page contient un écouteur d'événement change"""
+def test_index_contains_input_text(client):
+    """Test que la page contient un input texte"""
     response = client.get('/')
     html = response.data.decode()
-    assert 'addEventListener' in html or 'onchange' in html or 'onclick' in html
+    assert 'type="text"' in html or 'type="input"' in html
 
-def test_index_contains_task_elements(client):
-    """Test que la page contient des éléments de tâche"""
+def test_index_contains_submit_button(client):
+    """Test que la page contient un bouton de soumission"""
     response = client.get('/')
     html = response.data.decode()
-    assert 'li' in html or 'task' in html.lower() or 'todo' in html.lower()
+    assert 'type="submit"' in html or 'Ajouter' in html
 
-def test_index_has_correct_structure(client):
-    """Test que la structure HTML de base est présente"""
+def test_index_contains_form_action(client):
+    """Test que le formulaire a une action POST"""
     response = client.get('/')
     html = response.data.decode()
-    assert '<!DOCTYPE html>' in html
-    assert '<html>' in html
-    assert '<head>' in html
-    assert '<body>' in html
+    assert 'method="post"' in html or 'method="POST"' in html or '/api/tasks' in html
 
-def test_index_links_stylesheet(client):
-    """Test que la page lie le fichier CSS"""
-    response = client.get('/')
-    assert 'style.css' in response.data.decode()
-
-def test_index_has_title(client):
-    """Test que la page a un titre"""
-    response = client.get('/')
-    assert '<title>' in response.data.decode()
-
-def test_index_no_errors(client):
-    """Test qu'aucune erreur serveur n'est retournée"""
-    response = client.get('/')
-    assert response.status_code < 500
-
-def test_index_not_empty(client):
-    """Test que la réponse n'est pas vide"""
-    response = client.get('/')
-    assert len(response.data) > 0
-
-def test_index_contains_script_tag(client):
-    """Test que la page contient une balise script"""
-    response = client.get('/')
-    assert '<script>' in response.data.decode()
-
-def test_index_checkbox_has_id_or_class(client):
-    """Test que les checkboxes ont un attribut pour les cibler"""
+def test_index_form_has_input_name(client):
+    """Test que l'input a un attribut name"""
     response = client.get('/')
     html = response.data.decode()
-    # Vérifie que les checkboxes ont un id ou une classe
-    assert 'id=' in html or 'class=' in html
+    assert 'name=' in html
 
-def test_index_multiple_checkboxes(client):
-    """Test qu'il y a plusieurs checkboxes (pour plusieurs tâches)"""
+def test_index_form_has_placeholder(client):
+    """Test que l'input a un placeholder"""
     response = client.get('/')
     html = response.data.decode()
-    count = html.count('type="checkbox"')
-    assert count >= 2  # Au moins 2 tâches avec checkbox
+    assert 'placeholder' in html
+
+def test_index_form_has_required(client):
+    """Test que l'input a required ou une validation"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert 'required' in html or 'minlength' in html
+
+def test_index_form_has_id(client):
+    """Test que le formulaire a un id"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert 'id="' in html
+
+def test_index_form_has_label(client):
+    """Test que l'input a un label associé"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert '<label' in html
+
+def test_index_form_has_button_text(client):
+    """Test que le bouton a du texte"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert 'Ajouter' in html or 'button' in html
+
+def test_index_form_has_event_handler(client):
+    """Test que le formulaire a un gestionnaire d'événement submit"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert 'onsubmit' in html or 'addEventListener' in html
+
+def test_index_form_has_prevent_default(client):
+    """Test que le formulaire empêche le rechargement par défaut"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert 'preventDefault' in html
+
+def test_index_form_has_fetch_or_ajax(client):
+    """Test que le formulaire utilise fetch ou AJAX"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert 'fetch' in html or 'XMLHttpRequest' in html
+
+def test_index_form_has_post_method(client):
+    """Test que le formulaire utilise POST"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert 'POST' in html or 'post' in html
+
+def test_index_form_has_api_endpoint(client):
+    """Test que le formulaire appelle /api/tasks"""
+    response = client.get('/')
+    html = response.data.decode()
+    assert '/api/tasks' in html

@@ -1,6 +1,12 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, request, jsonify
 
 app = Flask(__name__)
+
+tasks = [
+    {"id": 1, "text": "Faire les courses", "done": False},
+    {"id": 2, "text": "Appeler le médecin", "done": False},
+    {"id": 3, "text": "Réviser le code", "done": False}
+]
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html>
@@ -28,29 +34,81 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             text-decoration: line-through;
             color: #888;
         }
+        .add-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .add-form input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        .add-form button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #1a1a2e;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .add-form button:hover {
+            background-color: #2d2d5e;
+        }
     </style>
 </head>
 <body>
     <div id="app">
-        <div class="task-item">
-            <input type="checkbox" id="task1">
-            <label for="task1">Faire les courses</label>
-        </div>
-        <div class="task-item">
-            <input type="checkbox" id="task2">
-            <label for="task2">Appeler le médecin</label>
-        </div>
-        <div class="task-item">
-            <input type="checkbox" id="task3">
-            <label for="task3">Réviser le code</label>
+        <form class="add-form" id="addForm">
+            <input type="text" id="taskInput" placeholder="Nouvelle tâche...">
+            <button type="submit">Ajouter</button>
+        </form>
+        <div id="taskList">
+            {% for task in tasks %}
+            <div class="task-item">
+                <input type="checkbox" id="task{{ task.id }}" {% if task.done %}checked{% endif %}>
+                <label for="task{{ task.id }}">{{ task.text }}</label>
+            </div>
+            {% endfor %}
         </div>
     </div>
+    <script>
+        document.getElementById('addForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const input = document.getElementById('taskInput');
+            const text = input.value.trim();
+            if (text === '') return;
+            fetch('/api/tasks', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: text})
+            })
+            .then(response => response.json())
+            .then(data => {
+                input.value = '';
+                location.reload();
+            });
+        });
+    </script>
 </body>
 </html>"""
 
 @app.route("/")
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    return render_template_string(HTML_TEMPLATE, tasks=tasks)
+
+@app.route("/api/tasks", methods=["POST"])
+def add_task():
+    data = request.get_json()
+    text = data.get("text", "").strip()
+    if not text:
+        return jsonify({"error": "Le champ ne peut pas être vide"}), 400
+    new_id = max(task["id"] for task in tasks) + 1 if tasks else 1
+    tasks.append({"id": new_id, "text": text, "done": False})
+    return jsonify({"id": new_id, "text": text, "done": False}), 201
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80)
