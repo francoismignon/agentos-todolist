@@ -3,11 +3,8 @@ import requests
 
 app = Flask(__name__)
 
-tasks = [
-    {"id": 1, "text": "Faire les courses", "done": False},
-    {"id": 2, "text": "Appeler le médecin", "done": False},
-    {"id": 3, "text": "Réviser le code", "done": False}
-]
+tasks = []
+task_id_counter = 1
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="fr">
@@ -26,6 +23,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             padding: 20px;
@@ -41,37 +39,41 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         h1 {
             color: #1a1a2e;
             text-align: center;
-            margin-bottom: 25px;
-            font-size: 28px;
+            margin-bottom: 20px;
         }
         .add-form {
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
         }
-        .add-form input[type="text"] {
+        .add-form input {
             flex: 1;
             padding: 10px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .add-form input:focus {
+            border-color: #0f3460;
         }
         .add-form button {
             padding: 10px 20px;
-            font-size: 16px;
-            background-color: #1a1a2e;
+            background: #0f3460;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
         }
         .add-form button:hover {
-            background-color: #2d2d5e;
+            background: #1a1a2e;
         }
         #weather-result {
             margin-bottom: 20px;
             padding: 15px;
-            background: #f0f4ff;
             border-radius: 8px;
             display: none;
         }
@@ -79,19 +81,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             display: block;
         }
         #weather-result.error {
-            background: #ffe0e0;
-            color: #c00;
+            background: #ffe6e6;
+            color: #cc0000;
+            border: 1px solid #ffcccc;
+        }
+        #weather-result.success {
+            background: #e6f3ff;
+            border: 1px solid #b3d9ff;
         }
         .weather-info {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-        .weather-info div {
-            padding: 10px;
-            background: white;
-            border-radius: 6px;
-            text-align: center;
+            gap: 15px;
         }
         .weather-info .label {
             font-size: 12px;
@@ -127,6 +128,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             text-decoration: line-through;
             color: #999;
         }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -149,6 +156,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
             {% endfor %}
         </div>
+        <div class="footer">Powered by Open-Meteo API</div>
     </div>
     <script>
         document.getElementById('weatherForm').addEventListener('submit', async function(e) {
@@ -157,7 +165,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const resultDiv = document.getElementById('weather-result');
             
             if (!city) {
-                resultDiv.innerHTML = 'Veuillez entrer une ville';
+                resultDiv.innerHTML = 'Entrez un nom de ville';
                 resultDiv.className = 'error show';
                 return;
             }
@@ -193,14 +201,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     71: 'Neige légère',
                     73: 'Neige modérée',
                     75: 'Neige forte',
+                    77: 'Grains de neige',
                     80: 'Averses de pluie légères',
                     81: 'Averses de pluie modérées',
                     82: 'Averses de pluie violentes',
+                    85: 'Averses de neige légères',
+                    86: 'Averses de neige fortes',
                     95: 'Orage',
                     96: 'Orage avec grêle légère',
                     99: 'Orage avec grêle forte'
                 };
-                const description = weatherCodeDescriptions[data.weathercode] || 'Inconnu';
+                const description = weatherCodeDescriptions[data.weathercode] || 'Non disponible';
                 
                 resultDiv.innerHTML = `
                     <h3 style="margin-bottom:15px;color:#1a1a2e;">Météo à ${data.city}</h3>
@@ -219,13 +230,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         </div>
                     </div>
                 `;
-                resultDiv.className = 'show';
+                resultDiv.className = 'success show';
             } catch (error) {
                 resultDiv.innerHTML = 'Erreur de connexion au serveur';
                 resultDiv.className = 'error show';
             }
         });
-        
+
         document.getElementById('addForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const input = document.getElementById('taskInput');
@@ -239,17 +250,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             });
             
             if (response.ok) {
-                const task = await response.json();
-                const taskList = document.getElementById('taskList');
-                const div = document.createElement('div');
-                div.className = 'task-item';
-                div.innerHTML = `
-                    <input type="checkbox" id="task${task.id}">
-                    <label for="task${task.id}">${task.text}</label>
-                `;
-                taskList.appendChild(div);
                 input.value = '';
+                location.reload();
             }
+        });
+
+        document.querySelectorAll('.task-item input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', async function() {
+                const taskId = this.id.replace('task', '');
+                const done = this.checked;
+                
+                await fetch('/api/tasks/' + taskId, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({done: done})
+                });
+            });
         });
     </script>
 </body>
@@ -258,16 +274,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 @app.route("/")
 def index():
     return render_template_string(HTML_TEMPLATE, tasks=tasks)
-
-@app.route("/api/tasks", methods=["POST"])
-def add_task():
-    data = request.get_json()
-    text = data.get("text", "").strip()
-    if not text:
-        return jsonify({"error": "Le champ ne peut pas être vide"}), 400
-    new_id = max(task["id"] for task in tasks) + 1 if tasks else 1
-    tasks.append({"id": new_id, "text": text, "done": False})
-    return jsonify({"id": new_id, "text": text, "done": False}), 201
 
 @app.route("/api/weather", methods=["POST"])
 def get_weather():
@@ -310,6 +316,38 @@ def get_weather():
         "wind": current.get("windspeed"),
         "weathercode": current.get("weathercode")
     })
+
+@app.route("/api/tasks", methods=["GET"])
+def get_tasks():
+    return jsonify(tasks)
+
+@app.route("/api/tasks", methods=["POST"])
+def add_task():
+    global task_id_counter
+    data = request.get_json()
+    text = data.get("text", "").strip()
+    if not text:
+        return jsonify({"error": "Le texte est requis"}), 400
+    task = {"id": task_id_counter, "text": text, "done": False}
+    task_id_counter += 1
+    tasks.append(task)
+    return jsonify(task), 201
+
+@app.route("/api/tasks/<int:task_id>", methods=["PUT"])
+def update_task(task_id):
+    data = request.get_json()
+    for task in tasks:
+        if task["id"] == task_id:
+            if "done" in data:
+                task["done"] = data["done"]
+            if "text" in data:
+                task["text"] = data["text"]
+            return jsonify(task)
+    return jsonify({"error": "Tâche non trouvée"}), 404
+
+@app.route("/api/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok", "version": "1.0"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80)
